@@ -1,6 +1,4 @@
-## Linux Coredumps: A Journey to Efficient On-Device Unwinding
-
-### Efficient On-Device Core Dump Processing for IoT: A Rusty Implementation
+## Efficient On-Device Core Dump Processing for IoT: A Rusty Implementation
 
 **Presented by:** Blake
 **Date:** June 24th, 2025
@@ -8,7 +6,7 @@
 
 ---
 
-### Slide 1: Title Slide
+# Title Slide
 
 **Title:** Linux Coredumps: A Journey to Efficient On-Device Unwinding
 **Subtitle:** Efficient On-Device Core Dump Processing for IoT: A Rusty Implementation
@@ -20,7 +18,7 @@
 
 ---
 
-### Slide 2: Introduction - The Problem
+### Introduction - The Problem
 
 **Title:** The Challenge of Crash Reporting in Embedded Linux
 
