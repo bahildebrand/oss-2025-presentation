@@ -1,22 +1,38 @@
 ## Efficient On-Device Core Dump Processing for IoT: A Rusty Implementation
 
-**Presented by:** Blake Hildebrand
+---
 
-**Date:** June 24th, 2025
+<!-- .slide: data-auto-animate -->
+
+## What's In a Coredump?
+
+--
+
+<!-- .slide: data-auto-animate -->
+
+```bash [1| 3-9]
+readelf -l core.elf
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  NOTE           0x0000000000000a50 0x0000000000000000 0x0000000000000000
+                 0x0000000000002234 0x0000000000000000         0x4
+  LOAD           0x0000000000002c88 0x00006119ededc000 0x0000000000000000
+                 0x00000000000003d4 0x00000000000003d4         0x8
+                 ...
+```
 
 ---
 
-## Introduction - The Problem
+## Where Is It Coming From?
 
-* **Linux Coredumps:** A powerful diagnostic tool, capturing a snapshot of a crashing process's memory.
-* **Why are they crucial?**
-  * Inspect process state at crash time.
-  * Get backtrace, register values, and local variables.
-* **The Embedded Linux Constraint:** Limited storage space on devices.
-  * Traditional coredumps can be very large (e.g., 2.6MB for one example!).
-  * Impacts disk writes and available space for other data.
-* **Privacy Concerns:** Sensitive PII (Personally Identifiable Information) on the stack or heap.
-  * Need to prevent data leakage from the device.
+--
+
+```bash [2]
+cat /proc/sys/kernel/core_pattern
+|/usr/sbin/memfault-core-handler -c /etc/memfaultd.conf %P %I %s
+```
 
 ---
 
