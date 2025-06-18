@@ -1,0 +1,18 @@
+/* Make code blocks wider to prevent horizontal scrolling */
+.reveal pre {
+    width: 100%;
+    max-width: none;
+}
+
+.reveal pre code {
+    max-width: none;
+    font-size: 0.8em;
+    line-height: 1.2;
+}
+
+/* Ensure code blocks fit within slide boundaries */
+.reveal section pre {
+    width: 95%;
+    margin: 0 auto;
+}
+
