@@ -8,33 +8,6 @@ June 24th, 2025
 
 ---
 
-## What do we get from a coredump?
-
---
-
-<!-- .slide: data-auto-animate -->
-
-```c
-gdb memfaultd core.elf
-```
-<!-- .element: data-id="1" -->
-
---
-
-<!-- .slide: data-auto-animate -->
-
-```c
-gdb memfaultd core.elf
-
-(gdb) bt
-#0  core::ptr::write<i32> ...
-#1  core::ptr::mut_ptr::{impl#0}::write<i32> ...
-#2  memfaultd::cli::memfaultctl::coredump::trigger_crash ..
-```
-<!-- .element: data-id="1" -->
-
----
-
 ## Stages of Coredump Collection Development
 
 <ol>
@@ -143,25 +116,6 @@ struct elf_prstatus_common {
 </div>
 </div>
 
---
-
-## Where Is It Coming From?
-
---
-
-## Signal Triggers
-
-- `SIGABRT`: Abnormal termination of the program (null)
-- `SIGFPE`: Floating-point exception.
-- `SIGSEGV`: Invalid memory reference.
-
---
-
-```bash [2]
-cat /proc/sys/kernel/core_pattern
-|/usr/sbin/memfault-core-handler -c /etc/memfaultd.conf %P %I %s
-```
-
 ---
 
 ## What is a Linux Coredump?
@@ -173,6 +127,29 @@ A Linux coredump represents a **snapshot** of the crashing process' memory
 - Written as an **ELF file**
 - Can be loaded into programs like **GDB**
 - Inspects the state of the process at the time of crash
+
+--
+
+<!-- .slide: data-auto-animate -->
+
+```c
+gdb memfaultd core.elf
+```
+<!-- .element: data-id="1" -->
+
+--
+
+<!-- .slide: data-auto-animate -->
+
+```c
+gdb memfaultd core.elf
+
+(gdb) bt
+#0  core::ptr::write<i32> ...
+#1  core::ptr::mut_ptr::{impl#0}::write<i32> ...
+#2  memfaultd::cli::memfaultctl::coredump::trigger_crash ..
+```
+<!-- .element: data-id="1" -->
 
 ---
 
@@ -859,10 +836,15 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 ### Assembly Process
 
 ✅ GP registers from `prstatus` notes
+
 ✅ Binary/dynamic lib address ranges
+
 ✅ Runtime offsets from `/proc/<pid>/maps`
+
 ✅ Binary paths for symbol files
+
 ✅ Unwind information from `.eh_frame`
+
 ✅ Build IDs for symbol matching
 
 ---
@@ -900,29 +882,15 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 
 ## Conclusion
 
-- **Traditional coredumps:** Powerful but large and can leak sensitive data.
-- **Shrinking the Core (Part 2):** Significantly reduced size by stripping heap and limiting stack depth.
+- **Traditional coredumps:** Powerful but large
+- **Stack Only Coredumps** Significantly reduced size by stripping heap and limiting stack depth.
   - ~35x size reduction.
-- **On-Device Unwinding (Part 3):** The ultimate solution for privacy and size.
+- **On-Device Unwinding:** The ultimate solution for privacy and size.
   - No memory sections leave the device.
   - Only program counters (PCs) and necessary metadata are collected.
   - Leverages `.eh_frame` and `addr2line` for local stack unwinding.
 
 - **Result:** Efficient, privacy-preserving crash capture for embedded Linux IoT devices.
-
----
-
-<!-- .slide: data-auto-animate -->
-
-## Common Challenges For Coredumps On Embedded Systems
-
---
-
-<ul>
-<li class="fragment fade-up">Size</p>
-<li class="fragment fade-up">Size</p>
-<li class="fragment fade-up">Size</p>
-</ul>
 
 ---
 
