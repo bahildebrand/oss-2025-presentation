@@ -271,7 +271,7 @@ While the pipe program is running:
 │      ...        │
 ├─────────────────┤
 │   PT_LOAD 1     │ ← Stack Memory
-│   PT_LOAD 2     │ ← Heap Memory  
+│   PT_LOAD 2     │ ← Heap Memory
 │      ...        │ ← Other Segments
 └─────────────────┘
 ```
@@ -435,6 +435,210 @@ Only difference: Added custom metadata note
 - Processes with many threads
 - Large memory allocations
 - Problematic for embedded devices with limited storage
+
+---
+
+## Part 2: Shrinking the Core
+
+--
+
+### Storage Constraints in Embedded Linux
+
+- Limited storage space
+- Need to reserve disk space for other data
+- Want to limit writes to flash memory
+- Multiple coredumps may be needed
+
+--
+
+### Solution: Strip to Essentials
+
+Keep only what's needed for debugging:
+
+- Stack traces
+- Register values
+- Local variables on the stack
+
+---
+
+## Defining The Minimum Coredump
+
+--
+
+### Requirements for Slim Coredump
+
+1. **Limit each stack** to the top N bytes
+2. **Remove heap allocations** completely
+3. **Capture metadata** needed for debuggers
+
+--
+
+### Tradeoffs
+
+**Lost capabilities:**
+
+- No heap-allocated values
+- Limited stack depth
+
+**Acceptable because:**
+
+- Most crashes debuggable with stack trace alone
+- Most stacks aren't very deep
+- Top few frames usually most interesting
+
+---
+
+## Finding The Stacks
+
+--
+
+### The Challenge
+
+- Need to find `PT_LOAD` segments containing stacks
+- Requires knowing each thread's Program Counter (PC)
+- Must limit capture to top N bytes per stack
+
+--
+
+### Solution: `NT_PRSTATUS` Notes
+
+```c
+struct elf_prstatus {
+  struct elf_prstatus_common common;
+  elf_gregset_t pr_reg; /* GP registers */
+  int pr_fpvalid;
+};
+```
+
+Contains all general purpose registers at crash time
+
+--
+
+### Finding Stack Regions
+
+1. Extract PC from `pr_reg` for each thread
+2. Search `/proc/<pid>/maps` for matching memory ranges
+3. Copy from PC down to start of stack (max N bytes)
+
+```bash
+77837a402000-77837a404000 rw-p 00000000 00:00 0
+```
+
+---
+
+## Debug Information Requirements
+
+--
+
+### Problem: Dynamic Linking
+
+- Programs use shared libraries (`libopenssl`, etc.)
+- Address Space Layout Randomization (ASLR)
+- Need mapping: compile-time → runtime addresses
+
+--
+
+### Solution: `r_debug` Structure
+
+```c
+struct r_debug {
+  int r_version;
+  struct link_map *r_map; /* Head of loaded objects */
+  ElfW(Addr) r_brk;
+  /* ... */
+};
+
+struct link_map {
+  ElfW(Addr) l_addr;    /* Address difference */
+  char *l_name;         /* File name */
+  struct link_map *l_next, *l_prev;
+};
+```
+
+---
+
+## Finding `r_debug`
+
+--
+
+### `PT_DYNAMIC` Program Header
+
+```c
+typedef struct {
+  Elf64_Sxword d_tag;
+  union {
+    Elf64_Xword d_val;
+    Elf64_Addr  d_ptr;
+  } d_un;
+} Elf64_Dyn;
+```
+
+--
+
+### Process
+
+1. Find `PT_DYNAMIC` segment
+2. Iterate through dynamic tags
+3. Look for `DT_DEBUG` tag
+4. Extract `r_debug` structure
+5. Add memory range to coredump
+
+---
+
+## Metadata Collection
+
+--
+
+### Required for Each Mapped File
+
+1. **ELF header**
+2. **All program headers**
+3. **Build ID note**
+
+Enables GDB to fetch symbols for dynamic libraries
+
+--
+
+### Discovery Process
+
+- Parse `/proc/<pid>/maps` for all mapped ELF files
+- Extract metadata from each mapped library
+- Include in final coredump
+
+---
+
+## Size Savings Results
+
+--
+
+### Before: Traditional Coredump
+
+```bash
+ls -la core-original.elf
+-rw-r--r-- 1 root root 2625K core-original.elf
+```
+
+**2.6 MB** - Very large for embedded devices!
+
+--
+
+### After: Optimized Coredump
+
+```bash
+ls -la core-optimized.elf
+-rw-r--r-- 1 root root 75K core-optimized.elf
+```
+
+**75 KB** - **35x size reduction!**
+
+--
+
+### Impact
+
+- Can store multiple coredumps in space of one original
+- Significant savings on constrained devices
+- Still maintains full debugging capability
+- Varies by program, but consistently dramatic
 
 ---
 
