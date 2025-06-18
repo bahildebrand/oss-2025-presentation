@@ -642,6 +642,262 @@ ls -la core-optimized.elf
 
 ---
 
+## Part 3: On-Device Unwinding
+
+--
+
+### The Ultimate Goals
+
+1. **Privacy**: No sensitive customer data leaves the device
+2. **Size**: Even greater reduction than Part 2
+3. **Security**: No memory sections transmitted
+
+--
+
+### The Approach
+
+Strip away ALL captured memory and do stack unwinding on-device
+
+**Result**: Send only Program Counters (PCs) and metadata
+
+---
+
+## What Information Do We Need?
+
+--
+
+### Minimum Requirements
+
+- **PC (Program Counter)** for each frame
+- **Symbol information** for each binary:
+  - PC range
+  - GNU build ID
+  - Compile-time vs runtime offset (ASLR)
+  - File path
+
+--
+
+### ASLR Challenge
+
+**Address Space Layout Randomization** randomizes load addresses
+
+- Security feature prevents exploitation
+- Compile-time addresses ≠ Runtime addresses
+- Need mapping between the two
+
+---
+
+## JSON Structure Example
+
+```json
+{
+  "symbols": [
+    {
+      "pc_range": { "start": "0x555dbc0000", "end": "0x555dc4c000" },
+      "build_id": "4929ac8cb3c174c113cafc7250efe12eee45cd25",
+      "compiled_offset": "0x0",
+      "runtime_offset": "0x555dbc0000",
+      "path": "/usr/bin/memfaultd"
+    }
+  ],
+  "threads": [
+    {
+      "pcs": [ "0x7f95862508", "0x7f95894b80" ]
+    }
+  ]
+}
+```
+
+---
+
+## Symbolication Process
+
+For each PC in a thread:
+
+1. **Find symbols** by checking PC ranges
+2. **Fetch symbol file** by build ID or path
+3. **Adjust for ASLR**:
+   - Subtract runtime offset
+   - Add compiled offset
+4. **Run through `addr2line`** for symbolification
+
+---
+
+## GNU Unwind Information
+
+--
+
+### Frame Pointer Limitations
+
+- Frame pointer not always available
+- Some platforms don't have frame pointers
+- Compilers may optimize away frame pointers
+- How do we find previous frame structure?
+
+--
+
+### The Solution: `.eh_frame`
+
+Modern compilers include `.eh_frame` section:
+
+- Contains rules to rebuild frame information
+- Works without frame pointers
+- Provides register locations on stack
+- Enables traversal to previous frames
+
+---
+
+## `.eh_frame` Structure
+
+--
+
+### Key Components
+
+- **CFI**: Common Frame Information
+- **CIE**: Common Information Entry (shared rules)
+- **FDE**: Frame Description Entry (specific rules)
+- **CFA**: Canonical Frame Address (frame base)
+
+--
+
+### Example Output
+
+```bash
+00000000 0000000000000014 00000000 CIE
+  Version:               1
+  Augmentation:          "zR"
+  Code alignment factor: 1
+  Data alignment factor: -8
+  Return address column: 16
+  DW_CFA_def_cfa: r7 (rsp) ofs 8
+  DW_CFA_offset: r16 (rip) at cfa-8
+```
+
+---
+
+## Frame Reconstruction
+
+--
+
+### CFA Calculation
+
+```bash
+DW_CFA_def_cfa: r7 (rsp) ofs 8
+```
+
+CFA = RSP + 8
+
+--
+
+### Register Recovery
+
+```bash
+DW_CFA_offset: r16 (rip) at cfa-8
+```
+
+RIP = CFA - 8
+
+--
+
+### Visual Representation
+
+```text
+Stack Layout:
+┌─────────────┐ ← RSP
+│             │
+├─────────────┤ ← CFA (RSP + 8)
+│ Return Addr │ ← RIP (CFA - 8)
+├─────────────┤
+│ Saved Regs  │
+└─────────────┘
+```
+
+---
+
+## Grabbing Thread Information
+
+--
+
+### Register State Source
+
+**`NT_PRSTATUS` ELF notes** contain:
+
+- Current GP registers for each thread
+- State at time of crash
+- Starting point for unwinding
+
+--
+
+### Binary Mapping Source
+
+**`/proc/<pid>/maps`** provides:
+
+```bash
+00430000-00873000 r-xp 00000000 b3:02 3172  /usr/bin/memfaultd
+00882000-008bd000 r--p 00442000 b3:02 3172  /usr/bin/memfaultd
+b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
+```
+
+- Runtime address ranges
+- Permission flags (`x` = executable)
+- File paths for symbols
+
+---
+
+## Information Extraction
+
+--
+
+### From Each Binary
+
+1. **`.eh_frame`** / **`.eh_frame_hdr`** sections
+2. **`.note.gnu.build-id`** for identification
+3. **Runtime vs compile-time offset** calculation
+
+--
+
+### Assembly Process
+
+✅ GP registers from `prstatus` notes
+✅ Binary/dynamic lib address ranges
+✅ Runtime offsets from `/proc/<pid>/maps`
+✅ Binary paths for symbol files
+✅ Unwind information from `.eh_frame`
+✅ Build IDs for symbol matching
+
+---
+
+## Benefits Summary
+
+--
+
+### Privacy Advantages
+
+- **Zero memory sections** leave the device
+- **No heap data** transmitted
+- **No stack variables** sent
+- **Only PCs and metadata** shared
+
+--
+
+### Size Advantages
+
+- **Minimal data**: Just addresses and symbols
+- **Predictable size**: Not dependent on memory usage
+- **Even smaller** than Part 2's 35x reduction
+- **Constant overhead** per thread
+
+--
+
+### Security Advantages
+
+- **No PII exposure** risk
+- **Compliance friendly** for sensitive environments
+- **Local processing** keeps data on-device
+- **Standard debugging** capability maintained
+
+---
+
 ## Conclusion
 
 - **Traditional coredumps:** Powerful but large and can leak sensitive data.
