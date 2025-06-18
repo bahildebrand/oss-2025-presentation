@@ -1,10 +1,20 @@
-## Efficient On-Device Core Dump Processing for IoT: A Rusty Implementation
+<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
+<img src="images/oss_mountains_corner.png" style="position: absolute; right: 0; bottom: 0; width: 600px; height: auto;">
 
----
+<div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; margin-left: 10px; margin-right: 10px;">
 
-Presented By: Blake Hildebrand
+<div>
+<h3>Efficient On Device Coredumps</h3>
+<h4>Blake Hildebrand</h4>
+</div>
 
-June 24th, 2025
+<div style="display: flex;  align-items: baseline; gap:20px;">
+  <img src="images/oss_logo.png" style="max-width: 10%">
+  <small>#OSSummit</small>
+  <small>@bahildebrand</small>
+</div>
+
+</div>
 
 ---
 
@@ -320,6 +330,7 @@ typedef struct {
 
 ---
 
+<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
 ## Coredumps at Memfault: Rev. 1
 
 --
@@ -415,7 +426,8 @@ Only difference: Added custom metadata note
 
 ---
 
-## Part 2: Shrinking the Core
+<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
+## Rev 2: Stack Only
 
 --
 
@@ -619,7 +631,8 @@ ls -la core-optimized.elf
 
 ---
 
-## Part 3: On-Device Unwinding
+<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
+## Rev 3: On-Device Unwinding
 
 --
 
