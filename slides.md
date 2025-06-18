@@ -4,7 +4,7 @@
 <div style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; margin-left: 10px; margin-right: 10px;">
 
 <div>
-<h3>Efficient On Device Coredumps</h3>
+<h3>Efficient On-Device Core Dump Processing for IoT: A Rusty Implementation</h3>
 <h4>Blake Hildebrand</h4>
 </div>
 
@@ -14,6 +14,39 @@
   <small>@bahildebrand</small>
 </div>
 
+</div>
+
+---
+
+<!-- .slide: data-background-color="#f2a541" -->
+
+<div style="display: flex; margin: 20px;">
+<div style="display: flex; flex-shrink:2; flex-direction:column;margin-right: 50px;">
+<img src="images/blake.jpg" style="" /> <img src="images/memfault-logo.svg" style="" />
+</div>
+
+<pre style="align-self: center;"><code data-line-numbers="1|3-7|9-15|17-20" class="language-bash">> readelf -n blake.elf
+
+Displaying notes found in: oss.host
+Owner                Data size        Description
+Blake                0x00000010       YOUR_HOST
+  Your host: Blake Hildebrand - @bahildebrand
+  Job title: Software Engineer @Memfault
+
+Displaying notes found in: blake.experience
+Owner                Data size        Description
+Blake                0x00000034       WORK_EXPERIENCE
+  microcontrollers
+  embedded linux
+  backend - distributed systems
+  Garmin - Amazon Robotics - AWS
+
+Displaying notes found in: blake.current-gig
+Owner                Data size        Description
+Blake                0x00000005       CURRENT_GIG
+  Develop memfaultd and help embedded engineers ship faster
+</code>
+</pre>
 </div>
 
 ---
@@ -35,96 +68,6 @@
     <li>Prevents PII from leaving the device</li>
     <li>Makes the core even smaller</li>
 </ol>
-
----
-
-<!-- .slide: data-auto-animate -->
-
-## What's In a Core?
-
---
-
-<!-- .slide: data-auto-animate -->
-<div class="r-vstack">
-<div>
-
-```bash [1| 3-9]
-readelf -l core.elf
-
-Program Headers:
-  Type  Offset             VirtAddr
-        FileSiz            MemSiz
-  NOTE  0x0000000000000a50 0x0000000000000000
-        0x0000000000002234 0x0000000000000000
-  LOAD  0x0000000000002c88 0x00006119ededc000
-        0x00000000000003d4 0x00000000000003d4
-                 ...
-```
-
-</div>
-<div class="fragment fade-up">
-
-```c
-typedef struct
-{
-  Elf64_Word p_type;   /* Segment type */
-  Elf64_Word p_flags;  /* Segment flags */
-  Elf64_Off p_offset;  /* Segment file offset */
-  Elf64_Addr p_vaddr;  /* Segment virtual address */
-  Elf64_Addr p_paddr;  /* Segment physical address */
-  Elf64_Xword p_filesz;  /* Segment size in file */
-  Elf64_Xword p_memsz;  /* Segment size in memory */
-  Elf64_Xword p_align;  /* Segment alignment */
-} Elf64_Phdr;
-```
-
-</div>
-</div>
-
---
-
-<div class="r-hstack">
-<div>
-
-#### Note Header
-
-```c
-typedef struct {
-  Elf64_Word n_namesz;
-  Elf64_Word n_descsz;
-  Elf64_Word n_type;
-} Elf64_Nhdr;
-```
-<!-- .element: style="margin: 1em; padding: 1em;" -->
-
-</div>
-
-<div>
-
-#### `prstatus` Note
-
-```c
-struct elf_prstatus_common {
-  struct elf_siginfo pr_info;
-  short pr_cursig;
-  unsigned long pr_sigpend;
-  unsigned long pr_sighold;
-  pid_t pr_pid;
-  pid_t pr_ppid;
-  pid_t pr_pgrp;
-  pid_t pr_sid;
-  struct __kernel_old_timeval pr_utime;
-  struct __kernel_old_timeval pr_stime;
-  struct __kernel_old_timeval pr_cutime;
-  struct __kernel_old_timeval pr_cstime;
-  elf_gregset_t pr_reg;
-  int pr_fpvalid;
-};
-```
-<!-- .element: style="margin: 1em; padding: 1em;" -->
-
-</div>
-</div>
 
 ---
 
@@ -330,7 +273,7 @@ typedef struct {
 
 ---
 
-<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
+<!-- .slide: data-background-color="#b5e5dc" -->
 ## Coredumps at Memfault: Rev. 1
 
 --
@@ -426,7 +369,42 @@ Only difference: Added custom metadata note
 
 ---
 
-<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
+<!-- .slide: data-background-color="#27130c" -->
+
+## Rev 1.5: Crabbing It Up
+
+<img src="images/ferris.svg" width="300">
+
+--
+
+### Why Move To Rust?
+
+<!-- .slide: data-background-color="#27130c" -->
+
+<ul class="crab-bullets">
+  <li class="fragment fade-up">Memory Safety</li>
+  <li class="fragment fade-up">Extensive Ecosystem</li>
+  <li class="fragment fade-up">Ergonomics</li>
+  <li class="fragment fade-up">Because All The Cool Kids Are Doing it</li>
+</ul>
+
+--
+
+### Our Most Used Libraries
+
+<!-- .slide: data-background-color="#27130c" -->
+
+<ul class="crab-bullets">
+  <li>clap - CLI Managemnt</li>
+  <li>gimli - DWARF Processing</li>
+  <li>goblin - ELF Processing</li>
+  <li>And much more!</li>
+</ul>
+
+---
+
+<!-- .slide: data-background-color="#b5e5dc" -->
+
 ## Rev 2: Stack Only
 
 --
@@ -510,7 +488,9 @@ Contains all general purpose registers at crash time
 3. Copy from PC down to start of stack (max N bytes)
 
 ```bash
-77837a402000-77837a404000 rw-p 00000000 00:00 0
+> cat /proc/1234/maps
+00430000-00873000 r-xp 00000000 b3:02 3172  /usr/bin/memfaultd
+00882000-008bd000 r--p 00442000 b3:02 3172  /usr/bin/memfaultd
 ```
 
 ---
@@ -631,7 +611,8 @@ ls -la core-optimized.elf
 
 ---
 
-<!-- .slide: data-background-color="#b5e5dc" style="height: 100%;" -->
+<!-- .slide: data-background-color="#b5e5dc" -->
+
 ## Rev 3: On-Device Unwinding
 
 --
@@ -862,6 +843,118 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 
 ---
 
+## Tying It All Together
+
+--
+
+### Complete Output Example
+
+From `memfaultctl trigger-coredump`:
+
+```json
+{
+  "version": "1",
+  "signal": "SIGSEGV",
+  "cmdline": "memfaultctl\u0000trigger-coredump\u0000",
+  "symbols": [
+    {
+      "pc_range": {
+        "start": "0x55ea82cc4000",
+        "end": "0x55ea839d3000"
+      },
+      "build_id": "4dfbaf904988c2cf8277f93d7adbf183884f8ed0",
+      "compiled_offset": "0x1bd000",
+      "runtime_offset": "0x55ea82cc4000",
+      "path": "/home/blake/memfaultd/target/debug/memfaultd"
+    }
+  ]
+}
+```
+
+--
+
+### Stack Trace Data
+
+```json
+{
+  "threads": [
+    {
+      "active": true,
+      "pcs": [
+        "0x55ea82cff77c",
+        "0x55ea82cff4a7",
+        "0x55ea82cff46f",
+        "0x55ea82e2e73f",
+        ...
+      ]
+    }
+  ]
+}
+```
+
+--
+
+## Address Resolution Process
+
+--
+
+### Step 1: Identify the Binary
+
+Top of stack: `0x55ea82cff77c`
+
+Binary address range:
+
+```json
+"pc_range": {
+  "start": "0x55ea82cc4000",
+  "end": "0x55ea839d3000"
+}
+```
+
+✅ Address fits in range → it's in `memfaultd`
+
+--
+
+### Step 2: Calculate Relative Address
+
+Account for ASLR shift:
+
+```json
+"compiled_offset": "0x1bd000",
+"runtime_offset": "0x55ea82cc4000"
+```
+
+**Formula:** `address - runtime_offset + compiled_offset`
+
+**Result:** `0x55ea82cff77c - 0x55ea82cc4000 + 0x1bd000 = 0x1f877c`
+
+--
+
+### Step 3: Resolve Symbol
+
+```bash
+$ addr2line -Cf -e memfaultd 1f877c
+core::ptr::write
+/rustc/.../library/core/src/ptr/mod.rs:1377
+```
+
+🎯 **Found the crash!** NULL pointer write as expected
+
+--
+
+### Complete Stack Trace
+
+Repeat this process for **each address** in the stack:
+
+1. **Identify** which binary contains the address
+2. **Calculate** the relative address
+3. **Resolve** the symbol with `addr2line`
+4. **Build** the complete call stack
+
+**Result:** Full symbolic stack trace without exposing memory!
+
+---
+
 ## Benefits Summary
 
 --
@@ -899,10 +992,8 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 - **Stack Only Coredumps** Significantly reduced size by stripping heap and limiting stack depth.
   - ~35x size reduction.
 - **On-Device Unwinding:** The ultimate solution for privacy and size.
-  - No memory sections leave the device.
   - Only program counters (PCs) and necessary metadata are collected.
   - Leverages `.eh_frame` and `addr2line` for local stack unwinding.
-
 - **Result:** Efficient, privacy-preserving crash capture for embedded Linux IoT devices.
 
 ---

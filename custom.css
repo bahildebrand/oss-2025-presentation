@@ -15,4 +15,13 @@
     width: 95%;
     margin: 0 auto;
 }
+/* Replace bullet points with crab emojis for specific lists */
+.reveal ul.crab-bullets {
+    list-style: none;
+}
+
+.reveal ul.crab-bullets li::before {
+    content: "🦀";
+    margin-right: 0.5em;
+}
 
