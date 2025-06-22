@@ -327,6 +327,28 @@ Only difference: Added custom metadata note
 
 --
 
+### Fun With Generics
+
+```rust
+pub struct CoreTransformer<R, W, P, M>
+where
+    R: CoreReader,
+    W: CoreWriter,
+    P: Read + Seek,
+    M: ProcMaps,
+{
+    core_reader: R,
+    core_writer: W,
+    proc_mem_stream: P,
+    metadata: CoredumpMetadata,
+    options: CoreTransformerOptions,
+    proc_maps: M,
+    log_fetcher: CoreTransformerLogFetcher,
+}
+```
+
+--
+
 ### Our Most Used Libraries
 
 <!-- .slide: data-background-color="#27130c" -->
