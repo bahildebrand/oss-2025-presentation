@@ -173,17 +173,6 @@ Sets the maximum size of a coredump
 
 ---
 
-## `procfs` Benefits
-
-While the pipe program is running:
-
-- Direct access to `/proc/<pid>/mem`
-- Access to `/proc/<pid>/cmdline`
-- Read-only access to kernel data structures
-- Additional process metadata
-
----
-
 ## ELF Core File Layout
 
 --
@@ -206,41 +195,6 @@ While the pipe program is running:
 └─────────────────┘
 ```
 
----
-
-## ELF Header
-
-```c
-typedef struct {
-  unsigned char e_ident[EI_NIDENT];
-  Elf32_Half e_type;        // ET_CORE for coredumps
-  Elf32_Half e_machine;     // Architecture (ARM, x86, etc.)
-  Elf32_Word e_version;
-  Elf32_Addr e_entry;
-  Elf32_Off e_phoff;        // Offset to program headers
-  // ... more fields
-} Elf32_Ehdr;
-```
-
----
-
-## Program Headers
-
---
-
-```c
-typedef struct {
-  Elf32_Word p_type;      // PT_NOTE or PT_LOAD
-  Elf32_Off p_offset;     // File offset
-  Elf32_Addr p_vaddr;     // Virtual address
-  Elf32_Addr p_paddr;     // Physical address
-  Elf32_Word p_filesz;    // Size in file
-  Elf32_Word p_memsz;     // Size in memory
-  Elf32_Word p_flags;
-  Elf32_Word p_align;
-} Elf32_Phdr;
-```
-
 --
 
 ### Two Main Types
@@ -253,10 +207,10 @@ typedef struct {
 ## PT_NOTE Layout
 
 ```text
-┌──────────────────────────────────┐
-│ namesz (4 bytes) │ descsz (4 bytes) │
-├──────────────────┼─────────────────┤
-│     type (4 bytes)                │
+┌──────────────────────────────────-┐
+│ namesz (4 bytes) │ descsz(4 bytes)│
+├──────────────────┼────────────────┤
+│          type (4 bytes)           │
 ├───────────────────────────────────┤
 │              name                 │
 │         (null-terminated)         │
@@ -295,23 +249,6 @@ typedef struct {
 4. Maintain compatibility with standard tools
 
 ---
-
-## The Handler Process
-
---
-
-### Core Pattern Setup
-
-```bash
-|/usr/sbin/memfault-core-handler -c /path/to/config %P %e %I %s
-```
-
-- `%P`: PID of crashing process
-- `%e`: Process name
-- `%I`: UID of crashing process
-- `%s`: Signal that caused crash
-
---
 
 ### Processing Steps
 
@@ -483,9 +420,9 @@ Contains all general purpose registers at crash time
 
 ### Finding Stack Regions
 
-1. Extract PC from `pr_reg` for each thread
+1. Extract `SP` from `pr_reg` for each thread
 2. Search `/proc/<pid>/maps` for matching memory ranges
-3. Copy from PC down to start of stack (max N bytes)
+3. Copy from `SP` down to start of stack (max N bytes)
 
 ```bash
 > cat /proc/1234/maps
@@ -622,6 +559,10 @@ ls -la core-optimized.elf
 1. **Privacy**: No sensitive customer data leaves the device
 2. **Size**: Even greater reduction than Part 2
 3. **Security**: No memory sections transmitted
+
+--
+
+TODO: Add slide reiterate what we're trying to get to, show a stacktrace
 
 --
 
@@ -974,15 +915,6 @@ Repeat this process for **each address** in the stack:
 - **Predictable size**: Not dependent on memory usage
 - **Even smaller** than Part 2's 35x reduction
 - **Constant overhead** per thread
-
---
-
-### Security Advantages
-
-- **No PII exposure** risk
-- **Compliance friendly** for sensitive environments
-- **Local processing** keeps data on-device
-- **Standard debugging** capability maintained
 
 ---
 
