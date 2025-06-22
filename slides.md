@@ -954,9 +954,15 @@ Repeat this process for **each address** in the stack:
 
 ## Q&A
 
-- **Thank you!**
-- **Further Reading:**
-  - [Linux Coredumps (Part 1) - Introduction](https://interrupt.memfault.com/blog/linux-coredumps-part-1)
-  - [Linux Coredumps (Part 2) - Shrinking the Core](https://interrupt.memfault.com/blog/linux-coredumps-part-2)
-  - [Linux Coredumps (Part 3) - On Device Unwinding](https://interrupt.memfault.com/blog/linux-coredumps-part-3)
-- **Source Code:** [memfault/memfaultd](https://github.com/memfault/memfaultd/tree/main/memfaultd/src/cli/memfault_core_handler/stack_unwinder)
+<div style="display: flex; margin: 20px; align-items: flex-start;">
+<div style="flex: 1; margin-right: 50px;">
+<ul>
+<li><b>Source Code:</b> <a href="https://github.com/memfault/memfaultd/tree/main/memfaultd/src/cli/memfault_core_handler/stack_unwinder">memfault/memfaultd</a></li>
+<li>Join our rooftop Happy Hour tonight, 6:30-8:00pm, right after the Tux Trek. Just across the street @ 54thirty Rooftop (1475 California St).</li>
+</ul>
+</div>
+
+<div style="flex-shrink: 0;">
+<img src="images/qr_code.png" style="width: 300px;" />
+</div>
+</div>
