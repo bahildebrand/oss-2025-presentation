@@ -51,6 +51,12 @@ Blake                0x00000005       CURRENT_GIG
 
 ---
 
+## Where Are We Trying To Go?
+
+TODO: Insert Picture of Memfault bt
+
+---
+
 ## Stages of Coredump Collection Development
 
 <ol>
@@ -85,8 +91,8 @@ A Linux coredump represents a **snapshot** of the crashing process' memory
 
 <!-- .slide: data-auto-animate -->
 
-```c
-gdb memfaultd core.elf
+```text
+gdb crash core.elf
 ```
 <!-- .element: data-id="1" -->
 
@@ -94,13 +100,14 @@ gdb memfaultd core.elf
 
 <!-- .slide: data-auto-animate -->
 
-```c
-gdb memfaultd core.elf
+```text
+gdb crash core.elf
 
-(gdb) bt
-#0  core::ptr::write<i32> ...
-#1  core::ptr::mut_ptr::{impl#0}::write<i32> ...
-#2  memfaultd::cli::memfaultctl::coredump::trigger_crash ..
+>>> bt
+#0  core::ptr::write<i32> (dst=0x0, src=42) at /rustc/d5c2e9c342b358556da91d61ed4133f6f50fc0c3/library/core/src/ptr/mod.rs:1377
+#1  core::ptr::mut_ptr::{impl#0}::write<i32> (self=0x0, val=42) at /rustc/d5c2e9c342b358556da91d61ed4133f6f50fc0c3/library/core/src/ptr/mut_ptr.rs:1449
+#2  trigger_crash () main.rs:76
+#3  main () at main.rs:33
 ```
 <!-- .element: data-id="1" -->
 
@@ -370,12 +377,13 @@ where
 
 --
 
-### Storage Constraints in Embedded Linux
+### Storage/Transmission Constraints in Embedded Linux
 
 - Limited storage space
 - Need to reserve disk space for other data
 - Want to limit writes to flash memory
 - Multiple coredumps may be needed
+- May be on metered connection (LTE)
 
 --
 
@@ -383,9 +391,8 @@ where
 
 Keep only what's needed for debugging:
 
-- Stack traces
-- Register values
-- Local variables on the stack
+- Stack memory
+- Debugger info (frame data/dynamic info)
 
 ---
 
@@ -421,6 +428,22 @@ Keep only what's needed for debugging:
 --
 
 ### The Challenge
+
+```text
+┌─────────────────┐
+│   ELF Header    │
+├─────────────────┤
+│ Program Headers │
+├─────────────────┤
+│   PT_NOTE 1     │
+│   PT_NOTE 2     │
+│      ...        │
+├─────────────────┤
+│   PT_LOAD 1     │ ← Stack Memory
+│   PT_LOAD 2     │ ← Heap Memory
+│      ...        │ ← Other Segments
+└─────────────────┘
+```
 
 - Need to find `PT_LOAD` segments containing stacks
 - Requires knowing each thread's Program Counter (PC)
@@ -814,13 +837,11 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 
 ### Complete Output Example
 
-From `memfaultctl trigger-coredump`:
-
 ```json
 {
   "version": "1",
   "signal": "SIGSEGV",
-  "cmdline": "memfaultctl\u0000trigger-coredump\u0000",
+  "cmdline": "trigger-coredump\u0000",
   "symbols": [
     {
       "pc_range": {
@@ -830,7 +851,7 @@ From `memfaultctl trigger-coredump`:
       "build_id": "4dfbaf904988c2cf8277f93d7adbf183884f8ed0",
       "compiled_offset": "0x1bd000",
       "runtime_offset": "0x55ea82cc4000",
-      "path": "/home/blake/memfaultd/target/debug/memfaultd"
+      "path": "/../trigger-coredump"
     }
   ]
 }
@@ -859,7 +880,7 @@ From `memfaultctl trigger-coredump`:
 
 --
 
-## Address Resolution Process
+## Processing On The Cloud
 
 --
 
@@ -876,7 +897,7 @@ Binary address range:
 }
 ```
 
-✅ Address fits in range → it's in `memfaultd`
+✅ Address fits in range → it's in `trigger-coredump`
 
 --
 
@@ -898,7 +919,7 @@ Account for ASLR shift:
 ### Step 3: Resolve Symbol
 
 ```bash
-$ addr2line -Cf -e memfaultd 1f877c
+$ addr2line -Cf -e trigger-coredump 1f877c
 core::ptr::write
 /rustc/.../library/core/src/ptr/mod.rs:1377
 ```
@@ -937,8 +958,13 @@ Repeat this process for **each address** in the stack:
 
 - **Minimal data**: Just addresses and symbols
 - **Predictable size**: Not dependent on memory usage
-- **Even smaller** than Part 2's 35x reduction
+- **Even smaller** 35x vs size of stack only coredumps!
 - **Constant overhead** per thread
+
+```bash
+ls -la --block-size=K /var/lib/memfaultd/mar/6f56a118-b5a9-47d7-bbed-36551adfa598/stacktrace.json
+-rw-r--r-- 1 root root 2K Jun 22 11:26 /var/lib/memfaultd/mar/6f56a118-b5a9-47d7-bbed-36551adfa598/stacktrace.json
+```
 
 ---
 
