@@ -15,6 +15,7 @@
     width: 95%;
     margin: 0 auto;
 }
+
 /* Replace bullet points with crab emojis for specific lists */
 .reveal ul.crab-bullets {
     list-style: none;
@@ -23,5 +24,28 @@
 .reveal ul.crab-bullets li::before {
     content: "🦀";
     margin-right: 0.5em;
+}
+
+/* White text for slides with dark backgrounds */
+.reveal .slides section[data-background-color="#27130c"] {
+    color: white !important;
+}
+
+.reveal .slides section[data-background-color="#27130c"] h1,
+.reveal .slides section[data-background-color="#27130c"] h2,
+.reveal .slides section[data-background-color="#27130c"] h3,
+.reveal .slides section[data-background-color="#27130c"] h4,
+.reveal .slides section[data-background-color="#27130c"] h5,
+.reveal .slides section[data-background-color="#27130c"] h6 {
+    color: white !important;
+}
+
+.reveal .slides section[data-background-color="#27130c"] p,
+.reveal .slides section[data-background-color="#27130c"] li {
+    color: white !important;
+}
+
+.reveal .slides section[data-background-color="#27130c"] ul.crab-bullets li {
+    color: white !important;
 }
 

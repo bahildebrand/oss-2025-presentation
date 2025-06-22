@@ -327,6 +327,8 @@ Only difference: Added custom metadata note
 
 --
 
+<!-- .slide: data-background-color="#27130c" -->
+
 ### Fun With Generics
 
 ```rust
