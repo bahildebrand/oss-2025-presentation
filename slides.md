@@ -22,7 +22,7 @@
 
 <div style="display: flex; margin: 20px;">
 <div style="display: flex; flex-shrink:2; flex-direction:column;margin-right: 50px;">
-<img src="images/blake.jpg" style="" /> <img src="images/memfault-logo.svg" style="" />
+<img src="images/blake.jpg" style="max-width: 250px; object-fit: cover;" /> <img src="images/memfault-logo.svg" style="" />
 </div>
 
 <pre style="align-self: center;"><code data-line-numbers="1|3-7|9-15|17-20" class="language-bash">> readelf -n blake.elf
