@@ -51,31 +51,43 @@ Blake                0x00000005       CURRENT_GIG
 
 ---
 
-## Where Are We Trying To Go?
-
-TODO: Insert Picture of Memfault bt
-
----
-
 ## Stages of Coredump Collection Development
 
 <ol>
-<li class="fragment fade-up">Normal Core Passthrough</li>
-  <ul class="fragment fade-up">
+<li>Normal Core Passthrough</li>
+  <ul>
     <li>Setting the stage for future improvements</li>
     <li>Allow for added metadata</li>
   </ul>
-<li class="fragment fade-up">Stack Only</li>
-  <ul class="fragment fade-up">
+<li>Stack Only</li>
+  <ul>
     <li>Shrinks the size</li>
   </ul>
-<li class="fragment fade-up">On-Device Unwind</li>
-  <ul class="fragment fade-up">
+<li>On-Device Unwind</li>
+  <ul>
     <li>Prevents PII from leaving the device</li>
     <li>Makes the core even smaller</li>
 </ol>
 
 ---
+
+## Where Are We Trying To Go?
+
+<img src="images/backtrace.png" style="width: 1000px;" />
+
+--
+
+## Why All The Fuss
+
+<ul>
+<li>Collecting crashes on millions of devices</li>
+<li>Devices may have limited storage space</li>
+<li>Devices may be on metered connection (LTE)</li>
+<li>Connection may be inconsistent</li>
+</ul>
+
+---
+
 
 ## What is a Linux Coredump?
 
@@ -201,13 +213,6 @@ Sets the maximum size of a coredump
 │      ...        │ ← Other Segments
 └─────────────────┘
 ```
-
---
-
-### Two Main Types
-
-- **`PT_NOTE`**: Metadata about the process
-- **`PT_LOAD`**: Memory segments (stack, heap, etc.)
 
 ---
 
@@ -410,12 +415,16 @@ Keep only what's needed for debugging:
 
 ### Tradeoffs
 
-**Lost capabilities:**
+--
+
+### Lost capabilities
 
 - No heap-allocated values
 - Limited stack depth
 
-**Acceptable because:**
+--
+
+### Acceptable because
 
 - Most crashes debuggable with stack trace alone
 - Most stacks aren't very deep
@@ -446,7 +455,7 @@ Keep only what's needed for debugging:
 ```
 
 - Need to find `PT_LOAD` segments containing stacks
-- Requires knowing each thread's Program Counter (PC)
+- Requires knowing each thread's Stack Pointer (SP)
 - Must limit capture to top N bytes per stack
 
 --
@@ -605,17 +614,26 @@ ls -la core-optimized.elf
 
 1. **Privacy**: No sensitive customer data leaves the device
 2. **Size**: Even greater reduction than Part 2
-3. **Security**: No memory sections transmitted
 
 --
 
-TODO: Add slide reiterate what we're trying to get to, show a stacktrace
+## Reminder: Where Are We Trying to Get?
+
+<img src="images/backtrace.png" style="width: 900px;" />
+
+--
+
+### The Debugger Divide
+
+- Getting a backtrace in a debugger can be thought of as a two part process
+  1. Reconstruct the call frame for each function in stack (unwinding)
+  2. Get symbol information for all addresses present (function/variable names)
 
 --
 
 ### The Approach
 
-Strip away ALL captured memory and do stack unwinding on-device
+Unwind the stack for each thread on device
 
 **Result**: Send only Program Counters (PCs) and metadata
 
@@ -629,7 +647,7 @@ Strip away ALL captured memory and do stack unwinding on-device
 
 - **PC (Program Counter)** for each frame
 - **Symbol information** for each binary:
-  - PC range
+  - PC range for each function
   - GNU build ID
   - Compile-time vs runtime offset (ASLR)
   - File path
@@ -669,20 +687,13 @@ Strip away ALL captured memory and do stack unwinding on-device
 
 ---
 
-## Symbolication Process
-
-For each PC in a thread:
-
-1. **Find symbols** by checking PC ranges
-2. **Fetch symbol file** by build ID or path
-3. **Adjust for ASLR**:
-   - Subtract runtime offset
-   - Add compiled offset
-4. **Run through `addr2line`** for symbolification
-
----
-
 ## GNU Unwind Information
+
+--
+
+### Stack Frame Structure
+
+<img src="images/stack_unwind.png" style="width: 400px;" />
 
 --
 
@@ -762,13 +773,13 @@ RIP = CFA - 8
 
 ```text
 Stack Layout:
-┌─────────────┐ ← RSP
+┌─────────────┐
 │             │
-├─────────────┤ ← CFA (RSP + 8)
-│ Return Addr │ ← RIP (CFA - 8)
-├─────────────┤
+├─────────────┤ ← CFA (RSP + N)
 │ Saved Regs  │
-└─────────────┘
+├─────────────┤
+│     RIP     │ ← RIP (CFA - 8)
+└─────────────┘ ← RSP
 ```
 
 ---
@@ -835,6 +846,16 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 
 --
 
+### For Each Thread
+
+1. Find the GP registers from `prstatus` note
+2. Search each `eh_frame` section for the current `PC`
+3. Use the unwind info from the `CFI` to reconstruct frame starting from current `PC`
+4. Use `LR` for previous frame `PC` and `CFA` for previous frame `SP`
+5. Repeat until end of stack
+
+--
+
 ### Complete Output Example
 
 ```json
@@ -881,6 +902,19 @@ b6c70000-b6c76000 r-xp 00000000 b3:02 544   /lib/libcap.so.2.66
 --
 
 ## Processing On The Cloud
+
+--
+
+## Symbolication Process
+
+For each PC in a thread:
+
+1. **Find symbols** by checking function PC ranges
+2. **Fetch symbol file** by build ID or path
+3. **Adjust for ASLR**:
+   - Subtract runtime offset
+   - Add compiled offset
+4. **Run through `addr2line`** for symbolification
 
 --
 
@@ -958,7 +992,7 @@ Repeat this process for **each address** in the stack:
 
 - **Minimal data**: Just addresses and symbols
 - **Predictable size**: Not dependent on memory usage
-- **Even smaller** 35x vs size of stack only coredumps!
+- **Even smaller** 35x vs size of stack only coredumps, over 1000x smaller than original!
 - **Constant overhead** per thread
 
 ```bash
