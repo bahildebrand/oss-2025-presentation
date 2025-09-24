@@ -935,7 +935,7 @@ Binary address range:
 
 --
 
-### Step 2: Calculate Relative Address
+### Step 2: Calculate Absolute Address
 
 Account for ASLR shift:
 
@@ -971,7 +971,7 @@ Repeat this process for **each address** in the stack:
 3. **Resolve** the symbol with `addr2line`
 4. **Build** the complete call stack
 
-**Result:** Full symbolic stack trace without exposing memory!
+**Result:** Full symbolicated stack trace without exposing memory!
 
 ---
 
@@ -996,8 +996,8 @@ Repeat this process for **each address** in the stack:
 - **Constant overhead** per thread
 
 ```bash
-ls -la --block-size=K /var/lib/memfaultd/mar/6f56a118-b5a9-47d7-bbed-36551adfa598/stacktrace.json
--rw-r--r-- 1 root root 2K Jun 22 11:26 /var/lib/memfaultd/mar/6f56a118-b5a9-47d7-bbed-36551adfa598/stacktrace.json
+ls -la --block-size=K /../stacktrace.json
+-rw-r--r-- 1 root root 2K Jun 22 11:26 /../stacktrace.json
 ```
 
 ---
